@@ -1,0 +1,102 @@
+app:
+  customer:
+    images:
+      uploads: uploads/customer-images
+
+spring:
+  application:
+    name: customer-vendor-service
+  datasource:
+    url: jdbc:h2:mem:customer-vendor-db
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    properties:
+      hibernate:
+        event:
+          marge:
+            entity_copy_observer: allow
+        jdbc:
+          time_zone: UTC
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+      client:
+        config:
+          default:
+            connect-timeout: 5000
+            read-timeout: 5000
+            logger-level: full
+          address-service:
+            url: http://localhost:8081/api/v1/address
+    config:
+      enabled: false
+
+  main:
+    allow-bean-definition-overriding: true
+
+server:
+  port: 8082
+
+logging:
+  level:
+    com.cvs.customervendorservice: DEBUG
+api:
+  server:
+    dev:
+      url: http://localhost:8082
+      name: DEV
+
+    prod:
+      url: http://localhost:8082
+      name: PROD
+
+# Resilience4j Circuit Breaker Configuration# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      addressService:
+        register-health-indicator: true
+        event-consumer-buffer-size: 50
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        sliding-window-type: count_based
+        minimum-number-of-calls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+
+  # Resilience4j Timeout Configuration
+  timelimiter:
+    instances:
+      addressService:
+        timeout-duration: 3s
+
+  # Resilience 4j Retry Configuration
+  retry:
+    instances:
+      addressService:
+        maxAttempts: 4
+        waitDuration: 5s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+#        retryExceptions:
+#          - java.io.IOException
+#          - java.util.concurrent.TimeoutException
+
+management:
+  health:
+    circuit breakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
+    web:
+      exposure:
+        include:
+          - '*'

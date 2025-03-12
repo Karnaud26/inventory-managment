@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: address-service
+  datasource:
+    url: jdbc:h2:mem:address-db
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    properties:
+      hibernate:
+        event:
+          marge:
+            entity_copy_observer: allow
+        jdbc:
+          time_zone: UTC
+  cloud:
+    config:
+      enabled: false
+  main:
+    allow-bean-definition-overriding: true
+
+server:
+  port: 8081
+
+logging:
+  level:
+    com.as.addressservice: DEBUG
+api:
+  server:
+    dev:
+      url: http://localhost:8081
+      name: DEV
+
+    prod:
+      url: http://localhost:8081
+      name: PROD
