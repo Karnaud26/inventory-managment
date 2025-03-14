@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -51,11 +52,20 @@ public class AddressServiceImpl implements AddressService {
             logger.error("ID is null");
             return;
         }
-        readOnlyAddressRepository.findById(UUID.fromString(id))
-                .ifPresent(
-                        writeAddressRepository::delete
+        //readOnlyAddressRepository.findById(UUID.fromString(id))
+               // .ifPresent(
+                   //     writeAddressRepository::delete
+                //);
+        AddressResponse addressResponse = readOnlyAddressRepository.findById(UUID.fromString(id))
+                .stream().map(addressMapper::toAddressResponse)
+                .findFirst()
+                .orElseThrow(
+                        () -> new EntityNotFoundException("The address provided with the identifier Id=" + id + " does not exist",
+                ErrorCodes.ADDRESS_NOT_FOUND)
                 );
-
+        if (addressResponse != null){
+            writeAddressRepository.delete(addressMapper.fromAddressResponseToAddress(addressResponse));
+        }
         //if (i) writeAddressRepository.delete(addressMapper.toAddress(addressRequest));
     }
 

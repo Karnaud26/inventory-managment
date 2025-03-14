@@ -13,7 +13,7 @@ import java.io.Serializable;
 @Builder
 public class AddressResponse implements Serializable {
 
-    private String Id;
+    private String id;
     private String address2;
     private String city;
     private String address1;

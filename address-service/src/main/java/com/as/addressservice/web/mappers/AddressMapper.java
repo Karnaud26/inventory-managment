@@ -18,4 +18,8 @@ public class AddressMapper {
     public AddressResponse toAddressResponse(final Address address) {
         return modelMapper.map(address, AddressResponse.class);
     }
+
+    public Address fromAddressResponseToAddress(final AddressResponse addressResponse) {
+        return modelMapper.map(addressResponse, Address.class);
+    }
 }
