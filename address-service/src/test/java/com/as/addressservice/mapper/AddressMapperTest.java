@@ -7,7 +7,9 @@ import com.as.addressservice.web.mappers.AddressMapper;
 import org.assertj.core.api.AssertionsForClassTypes;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.test.context.ActiveProfiles;
 
+@ActiveProfiles(value = "test")
 public class AddressMapperTest {
 
     private final AddressMapper addressMapper = new AddressMapper();
@@ -75,6 +77,4 @@ public class AddressMapperTest {
                 () -> addressMapper.toAddress(null)
         ).isInstanceOf(IllegalArgumentException.class);
     }
-
-
 }

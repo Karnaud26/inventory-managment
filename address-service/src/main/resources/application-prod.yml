@@ -20,8 +20,7 @@ spring:
       enabled: false
   main:
     allow-bean-definition-overriding: true
-  profiles:
-    active: test
+
 server:
   port: 8081
 
