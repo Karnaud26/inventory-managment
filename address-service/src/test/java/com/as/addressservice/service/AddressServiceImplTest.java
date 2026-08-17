@@ -18,9 +18,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -29,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@ActiveProfiles(value = "test")
+//@ActiveProfiles(value = "test")
 public class AddressServiceImplTest {
 
     @Mock
@@ -38,20 +39,26 @@ public class AddressServiceImplTest {
     private WriteAddressRepository writeAddressRepository;
     @Mock
     private AddressMapper addressMapper;
-    @Mock
-    private Logger logger;
     @InjectMocks
     private AddressServiceImpl addressService;
 
-    private final UUID validId = UUID.randomUUID();
+
     private AddressResponse addressResponse;
-    private AddressRequest addressRequest;
-    private Address address;
+
+    private AddressRequest validAddressRequest;
+    private Address existingAddress;
+    private Address savedAddress;
+    private AddressResponse expectedResponse;
+    private UUID validId;
+    private LocalDateTime now;
 
     @BeforeEach
     public void setUp(){
+        validId = UUID.randomUUID();
+        now = LocalDateTime.now();
 
-        address = Address.builder()
+        // Setup valid address request
+        validAddressRequest = AddressRequest.builder()
                 .street("123 Main St")
                 .address1("3456 Ave Norvege")
                 .city("Springfield")
@@ -59,16 +66,37 @@ public class AddressServiceImplTest {
                 .zipCode("62704")
                 .country("USA")
                 .build();
-        addressRequest =  AddressRequest.builder()
-                .id(String.valueOf(validId))
+        // Setup existing address
+        existingAddress = Address.builder()
+                .street("123 Main St")
+                .city("Metropolis")
+                .state("NY")
+                .zipCode("10001")
+                .country("USA")
+                .id(validId)
+                .createBy("user1")
+                .modifiedBy("user1")
+                .createdDate(Timestamp.valueOf(now))
+                .lastModifiedDate(Timestamp.valueOf(now))
+            .build();
+
+        // Setup saved address (could be either new or updated)
+
+        savedAddress =  Address.builder()
+                .id(UUID.fromString(String.valueOf(validId)))
                 .street("123 Main St")
                 .address1("3456 Ave Norvege")
                 .city("Springfield")
                 .state("IL")
                 .zipCode("62704")
                 .country("USA")
+                .createBy("user1")
+                .modifiedBy("user1")
+                .createdDate(Timestamp.valueOf(now))
+                .lastModifiedDate(Timestamp.valueOf(now))
                 .build();
 
+        // Setup expected response
         addressResponse = AddressResponse.builder()
                 .id(String.valueOf(validId))
                 .street("123 Main St")
@@ -83,14 +111,14 @@ public class AddressServiceImplTest {
     public void shouldFindAddressById(){
         // given
         String id = "a8ddcba3-d0e9-4160-85b6-18d994322976";
-        when(readOnlyAddressRepository.findById(UUID.fromString(id))).thenReturn(Optional.of(address));
-        when(addressMapper.toAddressResponse(address)).thenReturn(addressResponse);
+        when(readOnlyAddressRepository.findById(UUID.fromString(id))).thenReturn(Optional.of(existingAddress));
+        when(addressMapper.toAddressResponse(existingAddress)).thenReturn(addressResponse);
 
-        //when
+        // when
         AddressResponse result = addressService.findAddressById(id);
 
-        //then
-        assertThat(addressRequest).usingRecursiveComparison().isEqualTo(result);
+        // then
+        assertThat(addressResponse).usingRecursiveComparison().isEqualTo(result);
     }
 
     @Test
@@ -108,19 +136,15 @@ public class AddressServiceImplTest {
         String validIdString = validId.toString();
         UUID parsedUuid = UUID.fromString(validIdString);
 
-        when(readOnlyAddressRepository.findById(validId)).thenReturn(Optional.of(address));
-        when(addressMapper.toAddressResponse(address)).thenReturn(addressResponse);
-        when(addressMapper.fromAddressResponseToAddress(addressResponse)).thenReturn(address);
-        doNothing().when(writeAddressRepository).delete(address);
+        when(readOnlyAddressRepository.findById(validId)).thenReturn(Optional.of(existingAddress));
+        when(addressMapper.toAddressResponse(existingAddress)).thenReturn(addressResponse);
+        doNothing().when(writeAddressRepository).deleteById(existingAddress.getId());
 
-        // when
         addressService.deleteAddress(validIdString);
 
-        // then
         verify(readOnlyAddressRepository, times(1)).findById(parsedUuid);
-        verify(addressMapper, times(1)).toAddressResponse(address);
-        verify(addressMapper, times(1)).fromAddressResponseToAddress(addressResponse);
-        verify(writeAddressRepository, times(1)).delete(address);
+        verify(addressMapper, times(1)).toAddressResponse(existingAddress);
+        verify(writeAddressRepository, times(1)).deleteById(existingAddress.getId());
     }
 
     @Test
@@ -130,7 +154,7 @@ public class AddressServiceImplTest {
 
         // then
         verify(readOnlyAddressRepository, never()).findById(any());
-        verify(writeAddressRepository, never()).delete(any());
+        verify(writeAddressRepository, never()).deleteById(any());
     }
 
     @Test
@@ -149,7 +173,7 @@ public class AddressServiceImplTest {
         assertEquals(ErrorCodes.ADDRESS_NOT_FOUND, exception.getErrorCodes());
 
         verify(readOnlyAddressRepository, times(1)).findById(nonExistentId);
-        verify(writeAddressRepository, never()).delete(any());
+        verify(writeAddressRepository, never()).deleteById(any());
     }
 
     @Test
@@ -164,11 +188,11 @@ public class AddressServiceImplTest {
 
         // No specific verification on exception message as it's from UUID.fromString()
         verify(readOnlyAddressRepository, never()).findById(any());
-        verify(writeAddressRepository, never()).delete(any());
+        verify(writeAddressRepository, never()).deleteById(any());
     }
 
     @Test
-    public void deleteAddressById_WhenAddressNotFound_ShouldThrowException(){
+    public void deleteAddressById_WhenAddressNotFound_ShouldThrowEntityNotFoundException(){
         String id = "a8ddcba3-d0e9-4160-85b6-18d994322974";
         when(readOnlyAddressRepository.findById(UUID.fromString(id))).thenReturn(Optional.empty());
 
@@ -177,34 +201,31 @@ public class AddressServiceImplTest {
         });
 
         assertThat(exception.getMessage()).isEqualTo("The address provided with the identifier Id=" + id + " does not exist");
-        /* AssertionsForClassTypes.assertThatThrownBy(()->addressService.deleteAddress(id))
-                .isInstanceOf(EntityNotFoundException.class);*/
+        AssertionsForClassTypes.assertThatThrownBy(()->addressService.deleteAddress(id))
+                .isInstanceOf(EntityNotFoundException.class);
     }
 
     @Test
     public void saveAddress_WithValidRequest_ShouldReturnAddressResponse() {
         // given
-        // Mock the validator to return empty error list for valid request
         try (MockedStatic<AddressValidator> addressValidatorMock = mockStatic(AddressValidator.class)) {
-            addressValidatorMock.when(() -> AddressValidator.validAddress(addressRequest))
+            addressValidatorMock.when(() -> AddressValidator.validAddress(validAddressRequest))
                     .thenReturn(new ArrayList<>());
 
-            when(addressMapper.toAddress(addressRequest)).thenReturn(address);
-            when(writeAddressRepository.save(address)).thenReturn(address);
-            when(addressMapper.toAddressResponse(address)).thenReturn(addressResponse);
+            when(addressMapper.toAddress(validAddressRequest)).thenReturn(existingAddress);
+            when(writeAddressRepository.saveAndFlush(existingAddress)).thenReturn(savedAddress);
+            when(addressMapper.toAddressResponse(savedAddress)).thenReturn(addressResponse);
 
             // when
-            AddressResponse result = addressService.saveAddress(addressRequest);
+            AddressResponse result = addressService.saveAddress(validAddressRequest);
 
             // then
             assertThat(result).isNotNull();
-            //assertThat(result.getId()).isEqualTo("a8ddcba3-d0e9-4160-85b6-18d994322976");
-            //assertThat(result.getStreet()).isEqualTo("123 Main St");
-            assertThat(addressRequest).usingRecursiveComparison().isEqualTo(result);
+            assertThat(addressResponse).usingRecursiveComparison().isEqualTo(result);
 
-            verify(addressMapper, times(1)).toAddress(addressRequest);
-            verify(writeAddressRepository, times(1)).save(address);
-            verify(addressMapper, times(1)).toAddressResponse(address);
+            verify(addressMapper, times(1)).toAddress(validAddressRequest);
+            verify(writeAddressRepository, times(1)).saveAndFlush(existingAddress);
+            verify(addressMapper, times(1)).toAddressResponse(savedAddress);
         }
     }
 
@@ -213,14 +234,13 @@ public class AddressServiceImplTest {
         // given
         List<String> errorMessages = Arrays.asList("City is required", "ZipCode is invalid");
 
-        // Mock the validator to return error messages for invalid request
         try (MockedStatic<AddressValidator> addressValidatorMock = mockStatic(AddressValidator.class)) {
-            addressValidatorMock.when(() -> AddressValidator.validAddress(addressRequest))
+            addressValidatorMock.when(() -> AddressValidator.validAddress(validAddressRequest))
                     .thenReturn(errorMessages);
 
             // when & then
             InvalidEntityException exception = assertThrows(InvalidEntityException.class, () -> {
-                addressService.saveAddress(addressRequest);
+                addressService.saveAddress(validAddressRequest);
             });
 
             assertThat(exception.getMessage()).isEqualTo("The Address is not valid");
@@ -228,7 +248,7 @@ public class AddressServiceImplTest {
             assertThat(exception.getErrors()).isExactlyInstanceOf(errorMessages.getClass());
 
             verify(addressMapper, never()).toAddress(any());
-            verify(writeAddressRepository, never()).save(any());
+            verify(writeAddressRepository, never()).saveAndFlush(any());
             verify(addressMapper, never()).toAddressResponse(any());
         }
     }
@@ -252,7 +272,7 @@ public class AddressServiceImplTest {
             assertThat(exception.getErrorCodes()).isEqualTo(ErrorCodes.ADDRESS_NOT_VALID);
 
             verify(addressMapper, never()).toAddress(any());
-            verify(writeAddressRepository, never()).save(any());
+            verify(writeAddressRepository, never()).saveAndFlush(any());
             verify(addressMapper, never()).toAddressResponse(any());
         }
     }
@@ -263,21 +283,21 @@ public class AddressServiceImplTest {
         RuntimeException dbException = new RuntimeException("Database error");
 
         try (MockedStatic<AddressValidator> addressValidatorMock = mockStatic(AddressValidator.class)) {
-            addressValidatorMock.when(() -> AddressValidator.validAddress(addressRequest))
+            addressValidatorMock.when(() -> AddressValidator.validAddress(validAddressRequest))
                     .thenReturn(new ArrayList<>());
 
-            when(addressMapper.toAddress(addressRequest)).thenReturn(address);
-            when(writeAddressRepository.save(address)).thenThrow(dbException);
+            when(addressMapper.toAddress(validAddressRequest)).thenReturn(existingAddress);
+            when(writeAddressRepository.saveAndFlush(existingAddress)).thenThrow(dbException);
 
             // when & then
             RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-                addressService.saveAddress(addressRequest);
+                addressService.saveAddress(validAddressRequest);
             });
 
             assertThat(exception).isSameAs(dbException);
 
-            verify(addressMapper, times(1)).toAddress(addressRequest);
-            verify(writeAddressRepository, times(1)).save(address);
+            verify(addressMapper, times(1)).toAddress(validAddressRequest);
+            verify(writeAddressRepository, times(1)).saveAndFlush(existingAddress);
             verify(addressMapper, never()).toAddressResponse(any());
         }
     }

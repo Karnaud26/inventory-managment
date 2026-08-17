@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
-@ActiveProfiles("test")
+//@ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
 class AddressRestControllerTest {
 

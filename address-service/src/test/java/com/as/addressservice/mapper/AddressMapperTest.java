@@ -5,20 +5,32 @@ import com.as.addressservice.web.dto.AddressRequest;
 import com.as.addressservice.web.dto.AddressResponse;
 import com.as.addressservice.web.mappers.AddressMapper;
 import org.assertj.core.api.AssertionsForClassTypes;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.modelmapper.ModelMapper;
 import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles(value = "test")
+@ExtendWith(MockitoExtension.class)
 public class AddressMapperTest {
 
-    private final AddressMapper addressMapper = new AddressMapper();
+    private final ModelMapper modelMapper = new ModelMapper();
+
+    @InjectMocks
+    private AddressMapper addressMapper;
+    //private final AddressMapper addressMapper = new AddressMapper();
     private AddressRequest addressRequest;
     private AddressResponse addressResponse;
     private Address address;
 
-    @Before
+    @BeforeEach
     public void setup() {
+
+        addressMapper = new AddressMapper(modelMapper);
         address = Address.builder()
                 .street("123 Main St")
                 .address1("3456 Ave Norvège")
@@ -68,7 +80,7 @@ public class AddressMapperTest {
     @Test
     public void shouldMapAddressResponseToAddress(){
         Address result = addressMapper.fromAddressResponseToAddress(addressResponse);
-        AssertionsForClassTypes.assertThat(address).usingRecursiveComparison().isEqualTo(result);
+        AssertionsForClassTypes.assertThat(address).isEqualTo(result);
     }
 
     @Test

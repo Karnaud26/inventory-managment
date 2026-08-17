@@ -1,4 +1,4 @@
-FROM openjdk:17-oracle
+coFROM openjdk:17-oracle
 LABEL authors="akemgouo"
 EXPOSE 8081
 
