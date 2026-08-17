@@ -13,7 +13,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-@ActiveProfiles("test")
+//@ActiveProfiles("test")
 @DataJpaTest
 public class AddressRepositoryTest {
 
@@ -29,21 +29,21 @@ public class AddressRepositoryTest {
     @BeforeEach
     void setup(){
         System.out.println("-------------------------------------------------------");
-        writeAddressRepository.save(Address.builder()
+        writeAddressRepository.saveAndFlush(Address.builder()
                         .address1("3456 Ave Norvege")
                         .state("Canada")
                         .zipCode("12345")
                         .country("United Kingdom")
                         .city("United Kingdom")
                 .build());
-        writeAddressRepository.save(Address.builder()
+        writeAddressRepository.saveAndFlush(Address.builder()
                 .address1("3446 Ave Norh")
                 .state("USA")
                 .zipCode("12245")
                 .country("United State")
                 .city("Seatle")
                 .build());
-        writeAddressRepository.save(Address.builder()
+        writeAddressRepository.saveAndFlush(Address.builder()
                 .address1("3456 Ave Norvege")
                 .state("USA")
                 .zipCode("12145")
@@ -88,7 +88,7 @@ public class AddressRepositoryTest {
                 .country("USA")
                 .build();
         //when
-        Address savedAddress = writeAddressRepository.save(address);
+        Address savedAddress = writeAddressRepository.saveAndFlush(address);
 
         //then
         Address foundAddress = entityManager.find(Address.class, savedAddress.getId());
@@ -116,7 +116,7 @@ public class AddressRepositoryTest {
 
         //when
 
-        writeAddressRepository.delete(address);
+        writeAddressRepository.deleteById(addressId);
 
         //then
         Address foundAddress = entityManager.find(Address.class, addressId);

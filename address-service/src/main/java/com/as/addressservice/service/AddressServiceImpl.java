@@ -1,5 +1,7 @@
 package com.as.addressservice.service;
 
+import com.as.addressservice.entities.Address;
+import com.as.addressservice.logger.AuditLogger;
 import com.as.addressservice.repository.WriteAddressRepository;
 import com.as.addressservice.web.dto.AddressRequest;
 import com.as.addressservice.web.dto.AddressResponse;
@@ -27,6 +29,8 @@ public class AddressServiceImpl implements AddressService {
 
     private static final Logger logger = LoggerFactory.getLogger(AddressServiceImpl.class);
 
+    private static final AuditLogger  auditLogger = new AuditLogger();
+
     private final ReadOnlyAddressRepository readOnlyAddressRepository;
     private final WriteAddressRepository writeAddressRepository;
     private final AddressMapper addressMapper;
@@ -52,10 +56,6 @@ public class AddressServiceImpl implements AddressService {
             logger.error("ID is null");
             return;
         }
-        //readOnlyAddressRepository.findById(UUID.fromString(id))
-               // .ifPresent(
-                   //     writeAddressRepository::delete
-                //);
         AddressResponse addressResponse = readOnlyAddressRepository.findById(UUID.fromString(id))
                 .stream().map(addressMapper::toAddressResponse)
                 .findFirst()
@@ -64,20 +64,44 @@ public class AddressServiceImpl implements AddressService {
                 ErrorCodes.ADDRESS_NOT_FOUND)
                 );
         if (addressResponse != null){
-            writeAddressRepository.delete(addressMapper.fromAddressResponseToAddress(addressResponse));
+            writeAddressRepository.deleteById(UUID.fromString(id));
         }
-        //if (i) writeAddressRepository.delete(addressMapper.toAddress(addressRequest));
     }
 
     @Override
     public AddressResponse saveAddress(final AddressRequest addressRequest) {
+        validateAddressRequest(addressRequest);
 
+        Address address = (addressRequest.getId() != null)
+                ? updateExistingAddress(addressRequest)
+                : createNewAddress(addressRequest);
+
+        Address savedAddress = writeAddressRepository.saveAndFlush(address);
+        auditLogger.log("Address saved", savedAddress.getId(), savedAddress.getCreateBy(), savedAddress.getModifiedBy()); // optional custom logger
+        return addressMapper.toAddressResponse(savedAddress);
+    }
+
+    private  void validateAddressRequest(final AddressRequest addressRequest) {
         List<String> errorMessages = AddressValidator.validAddress(addressRequest);
-        if(!errorMessages.isEmpty()){
-            logger.error("Address is not valid {}", addressRequest);
-            throw new InvalidEntityException("The Address is not valid", ErrorCodes.ADDRESS_NOT_VALID, errorMessages);
+        if (!errorMessages.isEmpty()) {
+            logger.error("Address is not valid: {}", addressRequest);
+            throw new InvalidEntityException(
+                    "The Address is not valid",
+                    ErrorCodes.ADDRESS_NOT_VALID,
+                    errorMessages
+            );
         }
-        //if (addressRequest.getId() == null ){
-        return addressMapper.toAddressResponse(writeAddressRepository.save(addressMapper.toAddress(addressRequest)));
+    }
+
+    private Address updateExistingAddress(AddressRequest addressRequest) {
+        Address existingAddress = readOnlyAddressRepository.findById(UUID.fromString(addressRequest.getId()))
+                .orElseThrow(() -> new EntityNotFoundException("Address not found with ID: " + addressRequest.getId(), ErrorCodes.ADDRESS_NOT_FOUND));
+
+        addressMapper.updateAddressFromAddressRequest(addressRequest, existingAddress);
+        return existingAddress;
+    }
+
+    private Address createNewAddress(AddressRequest addressRequest) {
+        return addressMapper.toAddress(addressRequest);
     }
 }

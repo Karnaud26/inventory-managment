@@ -2,17 +2,24 @@ package com.as.addressservice.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Builder
+@ToString(callSuper = true)
+@SuperBuilder
 @Table(name = "address")
+@EntityListeners(AuditingEntityListener.class)
 public class Address extends AbstractEntity{
 
     @Column(name = "address1")
